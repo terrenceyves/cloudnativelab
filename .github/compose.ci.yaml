@@ -1,0 +1,5 @@
+services:
+  catalog:
+    image: cloud-native-lab-catalog
+  notifications:
+    image: cloud-native-lab-notifications

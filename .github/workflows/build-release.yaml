@@ -1,0 +1,85 @@
+name: Build and Release
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Build et tests du laboratoire
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      COMPOSE_PROJECT_NAME: cloud-native-ci
+      COMPOSE_FILE: compose.yaml:.github/compose.ci.yaml
+    steps:
+      - uses: actions/checkout@v4
+      - name: Préparer la configuration temporaire
+        run: sh scripts/setup.sh
+      - name: Construire et démarrer les services
+        run: docker compose up --build --detach --wait --wait-timeout 180
+      - name: Tester le catalogue
+        run: docker compose exec -T catalog npm test
+      - name: Tester les notifications
+        run: docker compose exec -T notifications npm test
+      - name: Tester les commandes et les événements Kafka
+        run: docker compose exec -T orders npm test
+      - name: Tester les pannes et la reprise
+        run: python3 scripts/test-resilience.py
+      - name: Archiver les images testées
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        run: docker save cloud-native-lab-orders cloud-native-lab-catalog cloud-native-lab-notifications | gzip > images.tar.gz
+      - uses: actions/upload-artifact@v4
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        with:
+          name: images-testees
+          path: images.tar.gz
+          retention-days: 1
+          if-no-files-found: error
+      - name: Afficher les journaux en cas d'échec
+        if: failure()
+        run: docker compose logs --no-color --tail 150
+      - name: Nettoyer le laboratoire temporaire
+        if: always()
+        run: docker compose down --volumes --remove-orphans
+
+  release:
+    name: Publier les images testées dans GHCR
+    needs: test
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: images-testees
+      - name: Charger les images testées
+        run: gunzip -c images.tar.gz | docker load
+      - name: Se connecter au registre GitHub
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_ACTOR: ${{ github.actor }}
+        run: printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GH_ACTOR" --password-stdin
+      - name: Publier une version identifiée par le commit
+        env:
+          REPOSITORY: ${{ github.repository }}
+          COMMIT: ${{ github.sha }}
+        run: |
+          registry="ghcr.io/${REPOSITORY,,}"
+          for service in orders catalog notifications; do
+            target="$registry/$service:sha-$COMMIT"
+            docker tag "cloud-native-lab-$service:latest" "$target"
+            docker push "$target"
+            printf '\n- %s\n' "$target" >> "$GITHUB_STEP_SUMMARY"
+          done
+      - name: Fermer la session du registre
+        if: always()
+        run: docker logout ghcr.io

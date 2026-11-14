@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="fr">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Laboratoire — Commandes</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f5f7fa;
+      color: #172c42;
+      max-width: 760px;
+      margin: 48px auto;
+      padding: 0 24px;
+    }
+
+    h1 {
+      font-size: 2rem;
+    }
+
+    section {
+      background: white;
+      border: 1px solid #dce3eb;
+      border-radius: 12px;
+      padding: 24px;
+      margin: 20px 0;
+    }
+
+    label {
+      display: block;
+      margin: 16px 0 6px;
+    }
+
+    input,
+    select,
+    button {
+      font: inherit;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #a3afbb;
+      box-sizing: border-box;
+    }
+
+    input,
+    select {
+      width: 100%;
+    }
+
+    button {
+      background: #174e75;
+      color: white;
+      margin-top: 18px;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+    }
+
+    pre {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      background: #edf2f7;
+      padding: 16px;
+      border-radius: 8px;
+    }
+
+    .muted {
+      color: #52677b;
+    }
+
+    #result:empty {
+      display: none;
+    }
+  </style>
+  <main>
+    <p class="muted">LABORATOIRE CLOUD NATIVE · ÉTAPE 3 · CATALOGUE + KAFKA</p>
+    <h1>Ma première commande</h1>
+    <p>
+      Crée une commande, puis retrouve-la dans PostgreSQL grâce à son
+      identifiant.
+    </p>
+    <p class="muted">
+      Démonstration locale sans authentification. Produits fictifs, aucun
+      paiement.
+    </p>
+    <section>
+      <h2>1. Créer une commande</h2>
+      <form id="create">
+        <label for="product">Produit</label
+        ><select id="product" required></select>
+        <label for="quantity">Quantité</label
+        ><input
+          id="quantity"
+          type="number"
+          min="1"
+          max="100"
+          step="1"
+          value="1"
+          required
+        />
+        <button id="submit" disabled>Créer la commande</button>
+      </form>
+    </section>
+    <section>
+      <h2>2. Retrouver une commande</h2>
+      <form id="lookup">
+        <label for="orderId">Identifiant de la commande</label
+        ><input
+          id="orderId"
+          required
+          placeholder="L’identifiant apparaît après la création"
+        />
+        <button>Consulter la commande</button>
+      </form>
+    </section>
+    <p id="message" role="status" aria-live="polite"></p>
+    <pre id="result"></pre>
+    <section><h2>3. Confirmation asynchrone</h2><p id="confirmation" role="status">Crée ou consulte une commande pour voir sa confirmation.</p><p class="muted">La confirmation est simulée. Clique sur « Consulter la commande » pour actualiser son état.</p></section>
+  </main>
+  <script src="/app.js" defer></script>
+</html>
